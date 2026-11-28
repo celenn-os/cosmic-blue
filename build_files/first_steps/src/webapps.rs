@@ -523,7 +523,7 @@ fn cached_icon(url: &str) -> Option<PathBuf> {
 }
 
 /// The site's icon is not in the cache, and the site was not asked for it
-/// in the last week
+/// since yesterday
 fn icon_missing(url: &str) -> bool {
     let Some([_, _, none]) = cache_paths(url) else {
         return false;
@@ -532,7 +532,7 @@ fn icon_missing(url: &str) -> bool {
         .and_then(|meta| meta.modified())
         .ok()
         .and_then(|time| time.elapsed().ok())
-        .is_some_and(|age| age.as_secs() < 7 * 24 * 3600);
+        .is_some_and(|age| age.as_secs() < 24 * 3600);
     cached_icon(url).is_none() && !asked_lately
 }
 
@@ -573,6 +573,7 @@ fn cache_icon(url: &str) {
             &png_part,
             &svg_part,
             page.as_ref().map(|(html, _)| html.as_str()),
+            url,
             &base
         ),
         Ok(true)
@@ -813,8 +814,14 @@ fn fetch(url: &str) -> Option<(String, String)> {
             "15",
             "--max-filesize",
             "4000000",
+            "--compressed",
             "--user-agent",
             "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0",
+            // (some sites only answer what looks like a browser)
+            "--header",
+            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "--header",
+            "Accept-Language: en-US,en;q=0.5",
             "--write-out",
             "\n%{url_effective}",
             "--",
@@ -1057,17 +1064,34 @@ fn install_icon(
             return Ok(());
         }
     }
-    if site_icon(&png, &svg, html, base)? {
+    if site_icon(&png, &svg, html, url, base)? {
         return Ok(());
     }
     std::fs::write(&svg, letter_icon(name))
 }
 
 /// Writes the site's best icon of at least 48 pixels (or 32 when it has no
-/// larger one) to `png` or `svg`; false when it has none
-fn site_icon(png: &Path, svg: &Path, html: Option<&str>, base: &str) -> std::io::Result<bool> {
+/// larger one) to `png` or `svg`; false when it has none. Its page's icons
+/// first, then the usual icons at the address asked (a site that sends
+/// programs to a sign-in page, or that only answers browsers, has its
+/// icons there).
+fn site_icon(
+    png: &Path,
+    svg: &Path,
+    html: Option<&str>,
+    url: &str,
+    base: &str,
+) -> std::io::Result<bool> {
+    let mut candidates: Vec<String> = icon_candidates(html, base).into_iter().take(6).collect();
+    for usual in ["/apple-touch-icon.png", "/favicon.ico"] {
+        if let Some(usual) = absolute(url, usual)
+            && !candidates.contains(&usual)
+        {
+            candidates.push(usual);
+        }
+    }
     let mut small: Option<image::DynamicImage> = None;
-    for candidate in icon_candidates(html, base).iter().take(6) {
+    for candidate in &candidates {
         let Some(bytes) = download(candidate) else {
             continue;
         };
