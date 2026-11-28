@@ -26,6 +26,9 @@ Each exported setting is reviewed, never copied as is:
 - **Theme** (`CosmicTheme.*.Builder`): changes go into `build_files/theme`,
   not into static files. The accent stays `#4f8dff` (dark) / `#1d47c4`
   (light), dark mode and frosted glass stay on unless decided otherwise.
+  The same tool writes the "Celenn Dark" and "Celenn Light" constellations
+  (COSMIC theme bundles, `CosmicThemeBundle.celenn-*`), which must stay
+  identical to the default themes.
 - **Icons, cursor, wallpaper**: stay the Celenn OS ones (`CosmicTk`,
   `CosmicBackground*`).
 - **Hardware-specific**: displays, scaling, touchpad, power and anything that

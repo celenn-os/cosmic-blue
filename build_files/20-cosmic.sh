@@ -119,10 +119,6 @@ find /usr/share/backgrounds -mindepth 1 -type d -empty -delete
 # "celenn", but other folders may come between).
 if [[ -d /usr/share/backgrounds/cosmic ]]; then
     mv /usr/share/backgrounds/cosmic /usr/share/backgrounds/cosmic-desktop
-    if grep -rlF /usr/share/backgrounds/cosmic/ /usr/share/cosmic /etc 2>/dev/null; then
-        echo "These files point to the moved COSMIC wallpapers" >&2
-        exit 1
-    fi
 fi
 echo "Wallpapers kept:"
 find /usr/share/backgrounds -printf '%y %p %l\n' | sort
@@ -151,6 +147,12 @@ wc -l "${PREVIOUS_DEFAULTS}"
 # win over the packaged files.
 cp -a /ctx/system_files/celenn/usr/share/cosmic/. /usr/share/cosmic/
 cp -a /ctx/system_files/celenn/usr/share/plymouth/. /usr/share/plymouth/
+# COSMIC's default wallpapers (CosmicBackground) point to the folder moved
+# above until ours replace them: nothing else may point there.
+if grep -rlF /usr/share/backgrounds/cosmic/ /usr/share/cosmic /etc 2>/dev/null; then
+    echo "These files point to the moved COSMIC wallpapers" >&2
+    exit 1
+fi
 
 # Celenn OS boot screen: Fedora's BGRT theme (the PC maker's logo from the
 # firmware, so the boot stays flicker-free) with our images. When the firmware

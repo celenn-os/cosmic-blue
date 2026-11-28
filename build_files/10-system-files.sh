@@ -249,6 +249,12 @@ cp -a "${STAGE}/." /
 # Only Celenn OS's avatars in the profile picture folder
 rm -rf /usr/share/pixmaps/faces
 cp -a /ctx/system_files/celenn/. /
+# The wallpaper of the Celenn Dark and Celenn Light constellations (theme
+# bundles written by build_files/theme): our per-theme default
+for mode in Dark Light; do
+    install -D -m 0644 "/usr/share/cosmic/com.system76.CosmicBackground.${mode}/v1/all" \
+        "/usr/share/cosmic/com.system76.CosmicThemeBundle.celenn-${mode,,}.Background/v1/base"
+done
 
 # No Homebrew usage statistics (brew sends them unless told not to), for
 # every shell: brew reads /etc/homebrew/brew.env itself. Appended, as the

@@ -100,40 +100,76 @@ fn frosted_glass(mut builder: ThemeBuilder, thickness: BlurStrength, glass: f32)
 /// The Celenn OS dark and light themes with the given dark accent and
 /// frosted glass (thickness, glass opacity of the dark theme, of the light
 /// theme).
-fn celenn(accent_dark: Srgb<u8>, thickness: BlurStrength, glass_dark: f32, glass_light: f32) {
-    write(
+fn celenn(
+    accent_dark: Srgb<u8>,
+    thickness: BlurStrength,
+    glass_dark: f32,
+    glass_light: f32,
+) -> [ThemeBuilder; 2] {
+    [
         frosted_glass(
             colors(frosted(ThemeBuilder::dark()), accent_dark, BG_DARK),
             thickness,
             glass_dark,
-        ),
+        )
+        .icon_theme(ICON_THEME),
         frosted_glass(
             colors(frosted(ThemeBuilder::light()), ACCENT_LIGHT, BG_LIGHT),
             thickness,
             glass_light,
-        ),
-    );
-    icon_theme();
+        )
+        .icon_theme(ICON_THEME),
+    ]
 }
 
-/// The icon theme, which COSMIC 1.12 moved into the theme: up to COSMIC 1.11
-/// apps read it from com.system76.CosmicTk (shipped in system_files), since
-/// 1.12 from the theme (libcosmic 4c853eb), which would otherwise say
-/// "Cosmic". It is set as a config key rather than a ThemeBuilder field, so
-/// that this builds with both libcosmic versions (1.11 ignores the key).
+/// The icon theme, part of the theme since COSMIC 1.12 (libcosmic 4c853eb;
+/// COSMIC 1.11 read it from com.system76.CosmicTk, still shipped in
+/// system_files for older accounts).
 const ICON_THEME: &str = "celenn";
 
-fn icon_theme() {
-    for config in [
-        ThemeBuilder::dark_config(),
-        Theme::dark_config(),
-        ThemeBuilder::light_config(),
-        Theme::light_config(),
-    ] {
-        config
-            .expect("theme config")
-            .set("icon_theme", ICON_THEME)
-            .expect("write icon theme");
+/// The names COSMIC Settings shows for the default themes (Appearance), and
+/// the constellations (theme bundles) that hold them. The same in every
+/// language.
+const NAME_DARK: &str = "Celenn Dark";
+const NAME_LIGHT: &str = "Celenn Light";
+const SLUG_DARK: &str = "celenn-dark";
+const SLUG_LIGHT: &str = "celenn-light";
+
+fn named(mut builder: ThemeBuilder, name: &str) -> ThemeBuilder {
+    builder.palette.as_mut().name = name.to_owned();
+    builder
+}
+
+/// The constellations (COSMIC theme bundles) "Celenn Dark" and "Celenn
+/// Light", in the form that COSMIC Settings lists as the system's own
+/// themes (the same as System76's, pop-os/cosmic-theme-bundles): a preset
+/// ("base") of the theme and of its builder, and a package id. Their
+/// wallpaper (the Background part) is a copy of our per-theme default,
+/// added by build_files/10-system-files.sh.
+///
+/// They hold exactly the default themes: COSMIC Settings compares the live
+/// theme with them, and would otherwise save the default as an extra theme.
+/// The frosted glass settings are not part of a constellation: COSMIC keeps
+/// them when another one is picked.
+fn bundles(dark: &ThemeBuilder, light: &ThemeBuilder) {
+    for (slug, builder) in [(SLUG_DARK, dark), (SLUG_LIGHT, light)] {
+        let id = format!("com.system76.CosmicThemeBundle.{slug}");
+        let config = |part: &str, version| {
+            cosmic_config::Config::new(&format!("{id}.{part}"), version).expect("bundle config")
+        };
+        config("Theme", Theme::VERSION)
+            .set("base", builder.clone().build())
+            .expect("write bundle theme");
+        config("Builder", ThemeBuilder::VERSION)
+            .set("base", builder)
+            .expect("write bundle builder");
+        let package = config("Package", 1);
+        package
+            .set("package_id", &id)
+            .expect("write bundle package id");
+        package
+            .set("version", "1.0.0")
+            .expect("write bundle package version");
     }
 }
 
@@ -164,20 +200,30 @@ fn write(dark: ThemeBuilder, light: ThemeBuilder) {
 /// celenn-migrate-defaults can tell them from a user's own choice.
 fn main() {
     match std::env::args().nth(1).as_deref() {
-        None => celenn(
-            ACCENT_DARK,
-            THICKNESS,
-            GLASS_OPACITY_DARK,
-            GLASS_OPACITY_LIGHT,
-        ),
-        Some("accent-3a9dff") => celenn(
+        None => {
+            let [dark, light] = celenn(
+                ACCENT_DARK,
+                THICKNESS,
+                GLASS_OPACITY_DARK,
+                GLASS_OPACITY_LIGHT,
+            );
+            let (dark, light) = (named(dark, NAME_DARK), named(light, NAME_LIGHT));
+            write(dark.clone(), light.clone());
+            bundles(&dark, &light);
+        }
+        Some("accent-3a9dff") => write_pair(celenn(
             ACCENT_DARK_3A9DFF,
             THICKNESS,
             GLASS_OPACITY_DARK,
             GLASS_OPACITY_LIGHT,
-        ),
-        Some("glass-0.8") => celenn(ACCENT_DARK, GLASS_0_8.0, GLASS_0_8.1, GLASS_0_8.1),
-        Some("glass-0.65") => celenn(ACCENT_DARK, GLASS_0_65.0, GLASS_0_65.1, GLASS_0_65.1),
+        )),
+        Some("glass-0.8") => write_pair(celenn(ACCENT_DARK, GLASS_0_8.0, GLASS_0_8.1, GLASS_0_8.1)),
+        Some("glass-0.65") => write_pair(celenn(
+            ACCENT_DARK,
+            GLASS_0_65.0,
+            GLASS_0_65.1,
+            GLASS_0_65.1,
+        )),
         Some("stock") => write(ThemeBuilder::dark(), ThemeBuilder::light()),
         Some("frosted") => write(
             frosted(ThemeBuilder::dark()),
@@ -185,4 +231,8 @@ fn main() {
         ),
         Some(other) => panic!("unknown theme variant {other}"),
     }
+}
+
+fn write_pair([dark, light]: [ThemeBuilder; 2]) {
+    write(dark, light);
 }

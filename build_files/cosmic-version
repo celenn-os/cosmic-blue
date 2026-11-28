@@ -7,4 +7,4 @@
 # merges it once the image builds. Until then the build stops when Fedora
 # ships another version (`just helpers-keys`, build_files/20-cosmic.sh), so a
 # new COSMIC never reaches the image without that pull request.
-1.11.0
+1.12.0

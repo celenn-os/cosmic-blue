@@ -39,6 +39,18 @@ grep -q "Path(\"${bg}/celenn-arcs.jpg\")" \
     /usr/share/cosmic/com.system76.CosmicBackground.Dark/v1/all
 grep -q "Path(\"${bg}/celenn-arcs.jpg\")" \
     /usr/share/cosmic/com.system76.CosmicBackground.Light/v1/all
+# Constellations (COSMIC theme bundles) Celenn Dark and Celenn Light: the
+# default themes and wallpaper under their names, so that COSMIC Settings
+# lists them and does not save the default look as an extra theme
+for mode in Dark Light; do
+    bundle="/usr/share/cosmic/com.system76.CosmicThemeBundle.celenn-${mode,,}"
+    grep -qx "\"Celenn ${mode}\"" "/usr/share/cosmic/com.system76.CosmicTheme.${mode}/v2/name"
+    grep -q "^    name: \"Celenn ${mode}\",$" "${bundle}.Theme/v2/base"
+    grep -q "^    icon_theme: \"celenn\",$" "${bundle}.Theme/v2/base"
+    grep -q "name: \"Celenn ${mode}\"," "${bundle}.Builder/v2/base"
+    cmp "/usr/share/cosmic/com.system76.CosmicBackground.${mode}/v1/all" "${bundle}.Background/v1/base"
+    grep -qx "\"com.system76.CosmicThemeBundle.celenn-${mode,,}\"" "${bundle}.Package/v1/package_id"
+done
 test -s /usr/share/icons/hicolor/scalable/apps/celenn-logo.svg
 # fastfetch: Celenn OS logo and config instead of Bluefin's, a valid
 # config, keys in the accent color, and Nerd Font symbols for its icons
